@@ -8,7 +8,7 @@
 # Read the run logs in the Actions tab and let them tell you where to look. Do
 # not rewrite the file from scratch: the exercise is the diagnosis, not the
 # typing. Each fault has its own signature, and fixing one only gets you as far
-# as the next.
+# as the next. Period.
 # ---------------------------------------------------------------------------
 name: CI
 
