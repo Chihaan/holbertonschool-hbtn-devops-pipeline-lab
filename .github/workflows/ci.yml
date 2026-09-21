@@ -120,3 +120,42 @@ jobs:
             ghcr.io/${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+    deploy:
+    name: Deploy to staging
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy
+        run: |
+          curl -f -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache":"do_not_clear"}'
+
+      - name: Verify staging
+        run: |
+          for attempt in {1..20}; do
+            echo "Attempt $attempt/20"
+
+            HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "${{ vars.STAGING_URL }}/health" || true)
+
+            ITEMS_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "${{ vars.STAGING_URL }}/items" || true)
+
+            echo "/health -> $HEALTH_STATUS"
+            echo "/items  -> $ITEMS_STATUS"
+
+            if [ "$HEALTH_STATUS" = "200" ] && [ "$ITEMS_STATUS" = "200" ]; then
+              echo "Staging is healthy"
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "Staging did not become healthy in time"
+          exit 1
